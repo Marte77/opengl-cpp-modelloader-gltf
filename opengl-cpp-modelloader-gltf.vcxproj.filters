@@ -103,6 +103,12 @@
     <None Include="definicoes.json">
       <Filter>Resource Files\Settings</Filter>
     </None>
+<<<<<<< Updated upstream
+=======
+    <None Include=".gitignore">
+      <Filter>Resource Files\Settings</Filter>
+    </None>
+>>>>>>> Stashed changes
   </ItemGroup>
   <ItemGroup>
     <Text Include="cordefundo.txt">

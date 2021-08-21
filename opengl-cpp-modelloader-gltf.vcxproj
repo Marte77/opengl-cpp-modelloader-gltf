@@ -143,6 +143,10 @@
     <ClInclude Include="VBO.h" />
   </ItemGroup>
   <ItemGroup>
+<<<<<<< Updated upstream
+=======
+    <None Include=".gitignore" />
+>>>>>>> Stashed changes
     <None Include="definicoes.json" />
     <None Include="fragmentShader.glsl" />
     <None Include="luzFragmentShader.glsl" />
