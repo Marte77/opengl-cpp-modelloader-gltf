@@ -17,6 +17,9 @@
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include<json/json.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include "Mesh.h"
 
 using json = nlohmann::json;
@@ -25,6 +28,7 @@ using json = nlohmann::json;
 class Model
 {
 public:
+	std::string fileType;
 	Model(const char* fichModel);
 	glm::vec3 vetorMov = glm::vec3(0.0f);
 	glm::vec3 vetorMovVelocidade = glm::vec3(0.0f);
@@ -37,6 +41,8 @@ public:
 
 
 private:
+	void loadFromGLTF(const char* file);
+	void loadFromOBJ(const char* file);
 	const char* file;
 	std::vector<unsigned char> data;
 	json JSON;
@@ -81,6 +87,11 @@ private:
 	std::vector<glm::vec3> groupFloatsVec3(std::vector<float>floatVec);
 	std::vector<glm::vec4> groupFloatsVec4(std::vector<float>floatVec);
 	
+
+	//load assimp
+	void processNode(aiNode* node, const aiScene *scene);
+	Mesh processMesh(aiMesh* mesh, const aiScene *scene);
+	std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
 };
 
 

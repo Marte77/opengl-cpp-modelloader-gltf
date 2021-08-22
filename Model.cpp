@@ -2,18 +2,18 @@
 
 Model::Model(const char* file)
 {
-	Util a;
-	// Make a JSON object
-	std::string text = a.lerFicheiro(file);
-	JSON = json::parse(text);
-
-	// Get the binary data
-	Model::file = file;
-	data = getData();
-
-	// Traverse all nodes
-	traverseNode(0);
+	std::string filestr(file);
+	int indexExtension = filestr.find_last_of('.')+1;//ja tem em conta o index 0
+	filestr = filestr.substr(indexExtension);// +1 para ignorar o '.'
+	if (filestr.compare("gltf") == 0) {
+		loadFromGLTF(file);
+	}
+	else if (filestr.compare("obj") == 0) {
+		loadFromOBJ(file);
+	}
+	Model::fileType = filestr;
 }
+
 
 void Model::move(shader& shader, Camera& camara)
 {
@@ -33,12 +33,167 @@ void Model::setVetorMov(float x, float y, float z)
 
 void Model::Draw(shader& shader, Camera& camera)
 {
+	int x = 0;
 	// Go over all meshes and draw each one
-	for (unsigned int i = 0; i < meshes.size(); i++)
-	{
-		meshes[i].Mesh::Draw(shader, camera, matricesMeshes[i]);
+	if(fileType == "gltf")
+		for (unsigned int i = 0; i < meshes.size(); i++)
+		{
+			meshes[i].Mesh::Draw(shader, camera, matricesMeshes[i]);
+		}
+	else
+		for (unsigned int i = 0; i < meshes.size(); i++)
+		{
+			meshes[i].Mesh::DrawOBJ(shader, camera);
+		}
+}
+
+//regiao loadfromobj
+#pragma region
+void Model::loadFromOBJ(const char* file) {
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(file, aiProcess_Triangulate | aiProcess_FlipUVs);
+	/*
+    outras opcoes para o segundo parametro do readfile
+	aiProcess_GenNormals: creates normal vectors for each vertex if the model doesn't contain normal vectors.
+    aiProcess_SplitLargeMeshes: splits large meshes into smaller sub-meshes which is useful if your rendering has a maximum number of vertices allowed and can only process smaller meshes.
+    aiProcess_OptimizeMeshes: does the reverse by trying to join several meshes into one larger mesh, reducing drawing calls for optimization.
+	*/
+
+	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+		std::cout << "ERRO::ASSIMP::"<< importer.GetErrorString() << std::endl;
+		return;
+	}
+
+	Model::file = file;
+	processNode(scene->mRootNode, scene);
+	
+}
+
+void Model::processNode(aiNode* node, const aiScene* scene) {
+	for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		meshes.push_back(processMesh(mesh, scene));
+	}
+	for (unsigned int i = 0; i < node->mNumChildren; i++) {
+		processNode(node->mChildren[i], scene);
 	}
 }
+
+Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene) {
+	using namespace std;
+	vector<Vertex> vertices;
+	vector<unsigned int> indices;
+	vector<Texture> textures;
+	for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+		Vertex vertex;
+		/*Vertex
+		* 
+			{	glm::vec3 position, normal, color;
+	glm::vec2 textureUV;
+				positions[i],
+				normals[i],
+				glm::vec3(1.0f, 1.0f, 1.0f),
+				texUVs[i]
+			}*/
+		vertex.position = glm::vec3(
+			mesh->mVertices[i].x,
+			mesh->mVertices[i].y,
+			mesh->mVertices[i].z
+		);
+		vertex.normal = glm::vec3(
+			mesh->mNormals[i].x,
+			mesh->mNormals[i].y,
+			mesh->mNormals[i].z
+		);
+		if (mesh->mTextureCoords[0]) {
+			vertex.textureUV = glm::vec2(
+				mesh->mTextureCoords[0][i].x,
+				mesh->mTextureCoords[0][i].y
+			);
+		}
+		else 
+			vertex.textureUV = glm::vec2(0.0f, 0.0f);
+		vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		vertices.push_back(vertex);
+	}
+
+	for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+		aiFace face = mesh->mFaces[i];
+		for (unsigned int j = 0; j < face.mNumIndices; j++) {
+			indices.push_back(face.mIndices[j]);
+		}
+	}
+
+	if (mesh->mMaterialIndex >= 0) {
+		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+		vector<Texture> diffuseMap = loadMaterialTextures(material,
+			aiTextureType_DIFFUSE, "diffuse");
+		textures.insert(textures.end(), diffuseMap.begin(), diffuseMap.end());
+
+		vector<Texture> specularMap = loadMaterialTextures(material,
+			aiTextureType_SPECULAR, "specular");
+		textures.insert(textures.end(), specularMap.begin(), specularMap.end());
+
+	}
+
+	return Mesh(vertices, indices, textures);
+}
+
+std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName) {
+	using namespace std;
+	vector<Texture> texturas;
+	for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+		aiString str;
+		mat->GetTexture(type, i, &str);
+		std::string texPath(str.C_Str());
+		const char* tipo = typeName.c_str();
+		/*Texture textura(str.C_Str(), tipo, 0);
+		texturas.push_back(textura);*/
+		bool skip = false;
+		for (unsigned int j = 0; j < loadedTexName.size(); j++)
+		{
+			if (loadedTexName[j] == texPath)
+			{
+				texturas.push_back(loadedTex[j]);
+				skip = true;
+				break;
+			}
+		}
+		if (!skip) {
+			std::string pathcompleto(this->file);
+			pathcompleto = pathcompleto.substr(0, pathcompleto.find_last_of('/'));
+			pathcompleto.append("/");
+			pathcompleto.append(str.C_Str());
+			Texture textura(pathcompleto.c_str(), tipo, loadedTex.size());
+			loadedTex.push_back(textura);
+			loadedTexName.push_back(texPath);
+			texturas.push_back(textura);
+		}
+	}
+	return texturas;
+}
+
+#pragma endregion
+
+
+
+//regiao loadfromgltf
+#pragma region
+void Model::loadFromGLTF(const char* file) {
+	Util a;
+	// Make a JSON object
+	std::string text = a.lerFicheiro(file);
+	JSON = json::parse(text);
+
+	// Get the binary data
+	Model::file = file;
+	data = getData();
+
+	// Traverse all nodes
+	traverseNode(0);
+}
+
+
 
 void Model::loadMesh(unsigned int indMesh)
 {
@@ -295,7 +450,7 @@ std::vector<Texture> Model::getTextures()
 			}
 		}
 	}
-
+	//std::cout << "NTEXTURAS!   " << textures.size() << std::endl;
 	return textures;
 }
 
@@ -350,3 +505,4 @@ std::vector<glm::vec4> Model::groupFloatsVec4(std::vector<float> floatVec)
 	}
 	return vectors;
 }
+#pragma endregion

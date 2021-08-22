@@ -14,6 +14,8 @@ uniform vec4 lightColor;
 uniform vec3 lightPos;
 uniform vec3 camPos;
 
+float luzAmbiente = 1.0f; //simula a reflexao da luz em outros objetos
+float ambient = luzAmbiente;
 //existem 3 tipos de luz, direcional, point e spotlight, esta funcao calcula a point light
 vec4 pointLight(float a, float b){
 	vec3 lightVec = lightPos - currentPos;
@@ -22,7 +24,7 @@ vec4 pointLight(float a, float b){
 	float intensidade = 1.0f / (a * dist * dist + b * dist + 1.0f);
 
 
-	float luzAmbiente = 0.2f; //simula a reflexao da luz em outros objetos
+	
 	
 	//normalizar o vec Normal e a obter a direcao da luz
 	vec3 normal = normalize(Normal);
@@ -47,7 +49,7 @@ vec4 pointLight(float a, float b){
 vec4 directionalLight()
 {
 // ambient lighting
-	float ambient = 0.20f;
+	
 
 	// diffuse lighting
 	vec3 normal = normalize(Normal);
@@ -69,8 +71,7 @@ vec4 spotLight(float outerCone, float innerCone)
 // outer cone and inner cone control how big the area that is lit up is
 
 
-	// ambient lighting
-	float ambient = 0.20f;
+
 
 	// diffuse lighting
 	vec3 normal = normalize(Normal);
@@ -93,7 +94,7 @@ vec4 spotLight(float outerCone, float innerCone)
 
 void main()
 {
-	FragColor = spotLight(0.90f,0.95f);
-	//FragColor = pointLight(3.0f,0.7f);
+	//FragColor = spotLight(0.90f,0.95f);
+	FragColor = pointLight(3.0f,0.7f);
 	//FragColor = directionalLight();
 }

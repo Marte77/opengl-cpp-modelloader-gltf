@@ -164,8 +164,10 @@ int main() {
 	
 	
 	//carregar model
-	Model coelho("res/models/sword/scene.gltf");
-	
+	//Model coelho("res/models/sword/scene.gltf");
+	std::string nomeobj = "planet";
+	std::string strpath = "res/models/objects/" + nomeobj + "/" + nomeobj + ".obj";
+	Model coelho(strpath.c_str());
 	//Model espada("res/models/sword/scene.gltf");
 	//espada.setVetorMov(0.0f);
 
@@ -190,10 +192,11 @@ int main() {
 #pragma endregion
 
 		camara.Inputs(janela);
-		camara.updateMatrix(FOV, 0.1f, 100.0f);
+		camara.updateMatrix(FOV, 0.1f, 1000.0f);
 		
 		
 		coelho.Draw(shaderProgram, camara);
+		
 		//espada.move(shaderProgram, camara);
 		
 		glfwSwapBuffers(janela);

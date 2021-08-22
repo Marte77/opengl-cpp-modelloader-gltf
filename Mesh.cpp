@@ -103,3 +103,51 @@ void Mesh::Draw(shader& shader,	Camera& camera, glm::mat4 matrix,
 	// Draw the actual mesh
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 }
+
+void Mesh::DrawOBJ(shader& shader, Camera& camera)
+{
+	glm::mat4 matrix = glm::mat4(1.0f);
+	glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+
+	shader.Ativar();
+	VAO.Bind();
+	unsigned int numDiffuse = 1, numSpecular = 1;
+	for (unsigned int i = 0; i < texturas.size(); i++) {
+		glActiveTexture(GL_TEXTURE0 + i);
+		std::string num;
+		std::string type = texturas[i].tipoTexturaDesc;
+		if (type == "diffuse")
+		{
+			num = std::to_string(numDiffuse++);
+		}
+		else if (type == "specular")
+		{
+			num = std::to_string(numSpecular++);
+		}
+		texturas[i].texUnit(shader, (type + num).c_str(), i);
+		texturas[i].Bind();
+	}
+	// Take care of the camera Matrix
+	glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.posicao.x, camera.posicao.y, camera.posicao.z);
+	camera.Matrix(shader, "camMatrix");
+	// Initialize matrices
+	glm::mat4 trans = glm::mat4(1.0f);
+	glm::mat4 rot = glm::mat4(1.0f);
+	glm::mat4 sca = glm::mat4(1.0f);
+
+	// Transform the matrices to their correct form
+	trans = glm::translate(trans, translation);
+	rot = glm::mat4_cast(rotation);
+	sca = glm::scale(sca, scale);
+
+	// Push the matrices to the vertex shader
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "translation"), 1, GL_FALSE, glm::value_ptr(trans));
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "rotation"), 1, GL_FALSE, glm::value_ptr(rot));
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "scale"), 1, GL_FALSE, glm::value_ptr(sca));
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(matrix));
+
+	// Draw the actual mesh
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+}

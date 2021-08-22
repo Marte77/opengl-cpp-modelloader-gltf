@@ -18,6 +18,12 @@
 struct Vertex {
 	glm::vec3 position, normal, color;
 	glm::vec2 textureUV;
+	
+	/*//usados para modelos obj
+	// tangent
+	glm::vec3 Tangent;
+	// bitangent
+	glm::vec3 Bitangent;*/
 };
 
 class VBO

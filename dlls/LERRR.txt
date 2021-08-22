@@ -1,0 +1,1 @@
+incluir este dll na pasta x64/Debug ou x64/Release
