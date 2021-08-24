@@ -7,16 +7,16 @@
 #include <sstream>  
 #include <string>  
 #include <vector>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>	
-#include<glm/gtc/type_ptr.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <stb/stb_image.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
-#include<json/json.h>
+#include <json/json.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -24,12 +24,44 @@
 
 using json = nlohmann::json;
 
+
+struct header {
+	uint32_t length, version;
+	char magic[5], lengthChar[4]; //4 bytes mais o null char
+};
+struct chunk {
+	uint32_t length; //tamanho do array data
+	char type[5], lengthChar[4];
+	unsigned char* data;
+};
+enum chunks {
+	onlyjson, //so tem json chunk
+	jsonbin //tem json chunk e bin chunk
+};
+struct glbfile {
+	//especificacao https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#glb-file-format-specification
+	header head;
+	chunks chunksenum;
+	chunk chunkArr[2];
+};
+
+
+
+
 //conjunto de mesh's
 class Model
 {
 public:
 	std::string fileType;
 	Model(const char* fichModel);
+	~Model() {
+		if (fileType == "glb") {
+			free(infoglb.chunkArr[0].data);
+			if (infoglb.chunksenum == jsonbin) {
+				free(infoglb.chunkArr[1].data);
+			}
+		}
+	};
 	glm::vec3 vetorMov = glm::vec3(0.0f);
 	glm::vec3 vetorMovVelocidade = glm::vec3(0.0f);
 
@@ -46,6 +78,12 @@ private:
 	const char* file;
 	std::vector<unsigned char> data;
 	json JSON;
+	
+	//glb loader
+	glbfile infoglb;
+	void loadFromGLB(const char* file);
+	void lerFicheiroGLB(const char* file);
+	std::vector<unsigned char> getDataFromGLB();
 	
 
 	// All the meshes and transformations

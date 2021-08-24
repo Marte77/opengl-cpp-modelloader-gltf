@@ -11,6 +11,9 @@ Model::Model(const char* file)
 	else if (filestr.compare("obj") == 0) {
 		loadFromOBJ(file);
 	}
+	else if (filestr.compare("glb") == 0) {
+		loadFromGLB(file);
+	}
 	Model::fileType = filestr;
 }
 
@@ -46,6 +49,124 @@ void Model::Draw(shader& shader, Camera& camera)
 			meshes[i].Mesh::DrawOBJ(shader, camera);
 		}
 }
+
+
+
+//regiao loadfromglb
+#pragma region
+void Model::loadFromGLB(const char* filePath) {
+	
+	lerFicheiroGLB(filePath);
+	JSON = json::parse(infoglb.chunkArr[0].data);
+	if (infoglb.chunksenum == onlyjson) {
+		std::cout << "ERROR::MODEL::LOADFROMGLB::ONLY_JSON_INFO" << std::endl;
+	}
+	data = getDataFromGLB();
+	//como o GLB é um ficheiro gltf com todas as outras infos combinadas
+	// logo para carregar tudo é bastante parecido exceto as texturas, que estao todas no mesmo ficheiro	
+	
+	traverseNode(0);
+}
+
+std::vector<unsigned char> Model::getDataFromGLB() {
+	std::vector<unsigned char> data;
+	for (int i = 0; i < infoglb.chunkArr[1].length; i++) {
+		data.push_back(infoglb.chunkArr[1].data[i]);
+	}
+	return data;
+}
+void Model::lerFicheiroGLB(const char*filePath){
+	FILE* file = fopen(filePath, "rb");
+	fseek(file, 0, SEEK_END);
+	long int fsize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char* str = (char*)malloc(fsize + 1);
+	fread(str, 1, fsize, file);
+	fclose(file);
+	str[fsize] = 0;
+
+	//glb é composto por uma header, uma chunk 0 em JSON e depois, se houver, outras chunks em binario
+	// uint32 = 4bytes
+	//header: magic (uint32) | version (uint32) | length (uint32)
+	//chunks: chunkLength (uint32) | chunkType (uint32) | chunkData (ubyte[])
+	//retirado de https://docs.fileformat.com/3d/glb/
+
+	infoglb.chunkArr[0].length = -1;
+	infoglb.chunkArr[1].length = -1;
+
+	infoglb.head.length = 0; infoglb.head.version = 0;
+	for (int i = 0; i < 4; i++) {
+		infoglb.head.magic[i] = str[i];
+		infoglb.head.version += str[i + 4 * UM_BYTE];
+		infoglb.head.lengthChar[i] = str[i + 8];
+	}
+	infoglb.head.magic[4] = '\0';
+	infoglb.head.length = *(uint32_t*)infoglb.head.lengthChar;//converter os 4 bytes no char array para um uint
+														//!!!!!se bem que fazer isto e desnecessario porque a length indicada 
+														//            no header é o tamanho do ficheiro todo, header incluida
+														//mas vou deixar para mostrar que sei fazer :^) 
+														//            (ps: parece que vou ter de usar isso para as outras lol)
+	//std::cout << "<HEADER >" << std::endl
+	//	<< "\tmagic: " << infoglb.head.magic << std::endl
+	//	<< "\tversion: " << infoglb.head.version << std::endl
+	//	<< "\tlength: " << infoglb.head.length << std::endl
+	//	<< "\tlengthChar: " << infoglb.head.lengthChar << std::endl
+	//	<< "<HEADER />" << std::endl;
+
+	if (strcmp(infoglb.head.magic, "glTF") != 0) {
+		std::cout << "ERROR::MODEL::GLB_LOADER::UNSUPORTED_BINARY_HEADER" << std::endl;
+		free(str);
+		return;
+	}
+	if (infoglb.head.version < 2) {
+		std::cout << "ERROR::MODEL::GLB_LOADER::UNSUPORTED_LEGACY_FILE_SUPORTED_VERSION" << infoglb.head.version << std::endl;
+		free(str);
+		return;
+	}
+
+	int index = 12; //numero de bytes da header, vai ser incrementado por 4 ou pelo tamanho da chunk
+
+	int nLoops = 0;
+	while (index < infoglb.head.length) {
+		nLoops++;
+		chunk payload;
+		for (int x = 0; x < 4; x++) {
+			payload.lengthChar[x] = str[index + x];
+			payload.type[x] = str[index + 4 + x];
+		}
+		payload.length = *(uint32_t*)payload.lengthChar;
+		payload.type[4] = '\0';
+		index += 4;//avancar para o chunktype
+		index += 4;//avancar para o chunkdata
+
+		payload.data = (unsigned char*)malloc(sizeof(unsigned char) * (payload.length + 1));
+
+		for (int x = 0; x < payload.length; x++) {
+			payload.data[x] = str[index + x];
+		}
+		payload.data[payload.length] = '\0';
+		index += payload.length;
+		//std::cout << "<Payload>" << std::endl
+		//	<< "\tlength: " << payload.length << std::endl
+		//	<< "\ttype: " << payload.type << std::endl
+		//	<< "\tstrlen(data): " << strlen(payload.data) << std::endl
+		//	<< "<Payload/>" << std::endl;
+
+
+		infoglb.chunkArr[nLoops - 1] = payload;
+	}
+	if (nLoops == 1) {
+		infoglb.chunksenum = onlyjson;
+	}
+	else {
+		infoglb.chunksenum = jsonbin;
+	}
+	free(str);
+}
+
+
+#pragma endregion
+
 
 //regiao loadfromobj
 #pragma region
@@ -289,7 +410,7 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 		rotationsMeshes.push_back(rotation);
 		scalesMeshes.push_back(scale);
 		matricesMeshes.push_back(matNextNode);
-
+		if(fileType == "gltf")
 		loadMesh(node["mesh"]);
 	}
 

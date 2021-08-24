@@ -25,6 +25,9 @@ Mesh::Mesh(std::vector<Vertex>& vertices_, std::vector<GLuint>& indices_, std::v
 							//layout para os normais		//offset das texturas, ou seja, os 2 numeros a seguir as texturas sao das normais
 	VAO.linkAttribute(VBO, 3, 2, GL_FLOAT, sizeof(Vertex), (void*)(9 * sizeof(float)));
 	//visualizacao [coord.x,coord.y,coord.z,cor.r,cor.g,cor.b,tex.x,tex.y,tex.z,normal.s,normal.t]
+
+	
+	
 	//remover a ligacao dos VBO, VAO e EBO para prevenir modificacao acidental
 	VAO.UnBind();
 	VBO.UnBind();

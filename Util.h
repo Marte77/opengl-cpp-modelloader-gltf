@@ -8,19 +8,21 @@
 #include <sstream>  
 #include <string>  
 #include <vector>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>	
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 
+#define UM_BYTE 1
+
 class Util
 {
 public:
 	int winW = 1280, winH = 720;
-	std::string lerFicheiro(const char* source) {
+	static std::string lerFicheiro(const char* source) {
 		std::ifstream in(source, std::ios::binary);
 		if (in)
 		{

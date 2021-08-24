@@ -8,8 +8,8 @@
 #include <sstream>  
 #include <string>  
 #include <vector>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -161,14 +161,16 @@ int main() {
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
-	
+	Model a("res/cubo.glb");
+	system("pause");
+	return 0;
 	
 	//carregar model
-	//Model coelho("res/models/sword/scene.gltf");
-	std::string nomeobj = "planet";
+	//Model coelho("res/models/cubo/untitled.gltf");
+	std::string nomeobj = "dancer07";
 	std::string strpath = "res/models/objects/" + nomeobj + "/" + nomeobj + ".obj";
-	Model coelho(strpath.c_str());
-	//Model espada("res/models/sword/scene.gltf");
+	//Model coelho(strpath.c_str());
+	Model coelho("res/models/sword/scene.gltf");
 	//espada.setVetorMov(0.0f);
 
 	
