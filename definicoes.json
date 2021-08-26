@@ -2,7 +2,7 @@
   "camara": {
     "sens": 200.0,
     "velocidade": 0.03,
-    "fov": 90.0,
+    "fov": 70.0,
     "posini": [
       6.0,28.0,25.0
     ]

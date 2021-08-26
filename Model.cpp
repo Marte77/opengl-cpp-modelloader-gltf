@@ -57,17 +57,84 @@ void Model::Draw(shader& shader, Camera& camera)
 void Model::loadFromGLB(const char* filePath) {
 	
 	lerFicheiroGLB(filePath);
+
 	JSON = json::parse(infoglb.chunkArr[0].data);
 	if (infoglb.chunksenum == onlyjson) {
 		std::cout << "ERROR::MODEL::LOADFROMGLB::ONLY_JSON_INFO" << std::endl;
+		throw(errno);
 	}
 	data = getDataFromGLB();
 	//como o GLB é um ficheiro gltf com todas as outras infos combinadas
 	// logo para carregar tudo é bastante parecido exceto as texturas, que estao todas no mesmo ficheiro	
-	
-	traverseNode(0);
+	Model::file = filePath;
+	//traverseNode(0);
+	traverseNodeForLoop();
 }
+void Model::traverseNodeForLoop(glm::mat4 matrix)
+{
+	json nodes = JSON["nodes"];
 
+	for (int i = 0; i < nodes.size(); i++) {
+		json object = nodes[i];
+		glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+		if (object.find("translation") != object.end())
+		{
+			float transValues[3];
+			for (unsigned int i = 0; i < object["translation"].size(); i++)
+				transValues[i] = (object["translation"][i]);
+			translation = glm::make_vec3(transValues);
+		}
+		glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+		if(object.contains("rotation")){
+			float rotValues[4] =
+			{
+				object["rotation"][3],
+				object["rotation"][0],
+				object["rotation"][1],
+				object["rotation"][2]
+			};
+			rotation = glm::make_quat(rotValues);
+		}
+		glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+		if (object.find("scale") != object.end())
+		{
+			float scaleValues[3];
+			for (unsigned int i = 0; i < object["scale"].size(); i++)
+				scaleValues[i] = (object["scale"][i]);
+			scale = glm::make_vec3(scaleValues);
+		}
+		glm::mat4 matNode = glm::mat4(1.0f);
+		if (object.find("matrix") != object.end())
+		{
+			float matValues[16];
+			for (unsigned int i = 0; i < object["matrix"].size(); i++)
+				matValues[i] = (object["matrix"][i]);
+			matNode = glm::make_mat4(matValues);
+		}
+		// Initialize matrices
+		glm::mat4 trans = glm::mat4(1.0f);
+		glm::mat4 rot = glm::mat4(1.0f);
+		glm::mat4 sca = glm::mat4(1.0f);
+
+		// Use translation, rotation, and scale to change the initialized matrices
+		trans = glm::translate(trans, translation);
+		rot = glm::mat4_cast(rotation);
+		sca = glm::scale(sca, scale);
+
+		// Multiply all matrices together
+		glm::mat4 matNextNode = matrix * matNode * trans * rot * sca;
+		// Check if the node contains a mesh and if it does load it
+		if (object.find("mesh") != object.end())
+		{
+			translationsMeshes.push_back(translation);
+			rotationsMeshes.push_back(rotation);
+			scalesMeshes.push_back(scale);
+			matricesMeshes.push_back(matNextNode);
+			loadMesh(object["mesh"]);
+		}
+	}
+	
+}
 std::vector<unsigned char> Model::getDataFromGLB() {
 	std::vector<unsigned char> data;
 	for (int i = 0; i < infoglb.chunkArr[1].length; i++) {
@@ -116,12 +183,12 @@ void Model::lerFicheiroGLB(const char*filePath){
 	if (strcmp(infoglb.head.magic, "glTF") != 0) {
 		std::cout << "ERROR::MODEL::GLB_LOADER::UNSUPORTED_BINARY_HEADER" << std::endl;
 		free(str);
-		return;
+		throw("ERROR::MODEL::GLB_LOADER::UNSUPORTED_BINARY_HEADER");
 	}
 	if (infoglb.head.version < 2) {
 		std::cout << "ERROR::MODEL::GLB_LOADER::UNSUPORTED_LEGACY_FILE_SUPORTED_VERSION" << infoglb.head.version << std::endl;
 		free(str);
-		return;
+		throw("ERROR::MODEL::GLB_LOADER::UNSUPORTED_LEGACY_FILE_SUPORTED_VERSION");
 	}
 
 	int index = 12; //numero de bytes da header, vai ser incrementado por 4 ou pelo tamanho da chunk
@@ -163,9 +230,7 @@ void Model::lerFicheiroGLB(const char*filePath){
 	}
 	free(str);
 }
-void Model::loadMeshGLB(unsigned int indMesh) {
 
-}
 
 #pragma endregion
 
@@ -339,9 +404,9 @@ void Model::loadMesh(unsigned int indMesh)
 	std::vector<GLuint> indices = getIndices(JSON["accessors"][indAccInd]);
 	std::vector<Texture> textures = getTextures();
 
-	std::cout << vertices.size() << std::endl;
-	std::cout << indices.size() << std::endl;
-	std::cout << textures.size() << std::endl;
+	std::cout << "MODEL::LOADMESH Nvertices: "<<vertices.size() << std::endl;
+	std::cout << "MODEL::LOADMESH Nindices: "<<indices.size() << std::endl;
+	std::cout << "MODEL::LOADMESH Ntexturas: "<<textures.size() << std::endl;
 	// Combine the vertices, indices, and textures into a mesh
 	meshes.push_back(Mesh(vertices, indices, textures));
 }
@@ -412,9 +477,7 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 		rotationsMeshes.push_back(rotation);
 		scalesMeshes.push_back(scale);
 		matricesMeshes.push_back(matNextNode);
-		if (fileType != "obj")
-			loadMesh(node["mesh"]);
-		else loadMeshGLB(node["mesh"]);
+		loadMesh(node["mesh"]);
 	}
 
 	// Check if the node has children, and if it does, apply this function to them with the matNextNode
@@ -530,21 +593,52 @@ std::vector<GLuint> Model::getIndices(json accessor)
 
 std::vector<Texture> Model::getTextures()
 {
-	if (fileType != "glb") {
-		std::vector<Texture> textures;
+	std::vector<Texture> textures;
 
-		std::string fileStr = std::string(file);
-		std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
+	std::string fileStr = std::string(file);
+	std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
 
-		// Go over all images
-		for (unsigned int i = 0; i < JSON["images"].size(); i++)
-		{
-			// uri of current texture
-			std::string texPath = JSON["images"][i]["uri"];
+	// Go over all images
+	for (unsigned int i = 0; i < JSON["images"].size(); i++)
+	{
+		// uri of current texture
+		std::string texPath;
+		try {
+			texPath = JSON["images"][i]["uri"];
+		}
+		catch (std::exception exception) {
+			//uri nao existe
+			//deve ser "name"
+			
+			texPath = JSON["images"][i]["name"];//so que o ficheiro nao tem a sua extensao, logo preciso de encontra-la na diretoria
+			std::string extension = JSON["images"][i]["mimeType"];
+			extension = extension.substr(extension.find_last_of('/') + 1, extension.size() - 1);
+			texPath += '.';
+			texPath.append(extension);
 
-			// Check if the texture has already been loaded
-			bool skip = false;
-			for (unsigned int j = 0; j < loadedTexName.size(); j++)
+			//o seguinte bloco comentado so funciona para c++17
+			//namespace fs = std::filesystem;
+			//using Path = fs::path; using string = std::string;
+			//bool didAppend = false;
+			//for (const auto& entry : fs::directory_iterator(fileDirectory)) {
+			//	Path path = entry.path();
+			//	string file(path.filename().string());
+			//	file = file.substr(0, file.find_last_of("."));
+			//	if (file.compare(texPath) == 0) {
+			//		texPath.append(path.extension().string());
+			//		didAppend = true;
+			//		break;
+			//	}
+			//}
+			//if (!didAppend) {
+			//	std::cout << "ERROR::MODEL::GETTEXTURES::NO_FILE_FOR_TEXTURE_EXISTS" << std::endl;
+			//}
+		}
+
+		
+		// Check if the texture has already been loaded
+		bool skip = false;
+		for (unsigned int j = 0; j < loadedTexName.size(); j++)
 			{
 				if (loadedTexName[j] == texPath)
 				{
@@ -554,36 +648,37 @@ std::vector<Texture> Model::getTextures()
 				}
 			}
 
-			// If the texture has been loaded, skip this
-			if (!skip)
+		// If the texture has been loaded, skip this
+		if (!skip)
+		{
+			// Load diffuse texture
+			//std::cout << (fileDirectory + texPath).c_str() << std::endl;
+			if (texPath.find("baseColor") != std::string::npos || texPath.find("BaseColor") != std::string::npos)
 			{
-				// Load diffuse texture
-				if (texPath.find("baseColor") != std::string::npos)
-				{
-					Texture diffuse = Texture((fileDirectory + texPath).c_str(), "diffuse", loadedTex.size());
-					textures.push_back(diffuse);
-					loadedTex.push_back(diffuse);
-					loadedTexName.push_back(texPath);
-				}
-				// Load specular texture
-				else if (texPath.find("metallicRoughness") != std::string::npos)
-				{
-					Texture specular = Texture((fileDirectory + texPath).c_str(), "specular", loadedTex.size());
-					textures.push_back(specular);
-					loadedTex.push_back(specular);
-					loadedTexName.push_back(texPath);
-				}
+				Texture diffuse = Texture((fileDirectory + texPath).c_str(), "diffuse", loadedTex.size());
+				textures.push_back(diffuse);
+				loadedTex.push_back(diffuse);
+				loadedTexName.push_back(texPath);
+			}
+			// Load specular texture
+			else if (texPath.find("metallicRoughness") != std::string::npos || texPath.find("Metallic-Gladiator") != std::string::npos || texPath.find("Metallic_Gladiator") != std::string::npos)
+			{
+				Texture specular = Texture((fileDirectory + texPath).c_str(), "specular", loadedTex.size());
+				textures.push_back(specular);
+				loadedTex.push_back(specular);
+				loadedTexName.push_back(texPath);
+			}
+			else {
+				Texture diffuse = Texture((fileDirectory + texPath).c_str(), "diffuse", loadedTex.size());
+				textures.push_back(diffuse);
+				loadedTex.push_back(diffuse);
+				loadedTexName.push_back(texPath);
 			}
 		}
-		//std::cout << "NTEXTURAS!   " << textures.size() << std::endl;
-		return textures;
 	}
-	else {
-		std::vector<Texture> textures;
-		//ver como obter as texturas com o ficheiro
-		//sabendo que as texturas estao na info binaria;
-		return textures;
-	}
+	//std::cout << "NTEXTURAS!   " << textures.size() << std::endl;
+	return textures;
+
 }
 
 std::vector<Vertex> Model::assembleVertices

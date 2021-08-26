@@ -20,6 +20,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <filesystem>
 #include "Mesh.h"
 
 using json = nlohmann::json;
@@ -83,6 +84,7 @@ private:
 	glbfile infoglb;
 	void loadFromGLB(const char* file);
 	void lerFicheiroGLB(const char* file);
+	void traverseNodeForLoop(glm::mat4 matrix = glm::mat4(1.0f));
 	std::vector<unsigned char> getDataFromGLB();
 	
 

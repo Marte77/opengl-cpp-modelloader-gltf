@@ -161,16 +161,19 @@ int main() {
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
-	Model a("res/cubo.glb");
-	system("pause");
-	return 0;
+	//Model a("res/cubo.glb");
+	//Model a("res/cubo_do_blender/glb/teste.glb");
+	//system("pause");
+	//return 0;
 	
 	//carregar model
 	//Model coelho("res/models/cubo/untitled.gltf");
 	std::string nomeobj = "dancer07";
 	std::string strpath = "res/models/objects/" + nomeobj + "/" + nomeobj + ".obj";
 	//Model coelho(strpath.c_str());
-	Model coelho("res/models/sword/scene.gltf");
+	Model coelho("res/cubo_do_blender/glb/teste.glb");
+	//Model coelho("res/models/gladiator/source/gladiador.glb"); //VER PORQUE E QUE NAO CARREGA
+	
 	//espada.setVetorMov(0.0f);
 
 	

@@ -49,7 +49,13 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 	stbi_set_flip_vertically_on_load(true);
 	// Reads the image from a file and stores it in bytes
 	unsigned char* bytes = stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
-
+	if (bytes == NULL)
+	{
+		std::string err(stbi_failure_reason());
+		err.insert(0, "TEXTURE::CONSTRUCTOR bytes == NULL - stbi:");
+		std::cout << err << std::endl;
+		throw err;
+	}
 	// Generates an OpenGL texture object
 	glGenTextures(1, &ID);
 	// Assigns the texture to a Texture Unit
