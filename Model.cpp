@@ -635,7 +635,6 @@ std::vector<Texture> Model::getTextures()
 			//}
 		}
 
-		
 		// Check if the texture has already been loaded
 		bool skip = false;
 		for (unsigned int j = 0; j < loadedTexName.size(); j++)

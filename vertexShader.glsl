@@ -19,7 +19,7 @@ uniform mat4 scale;
 void main()
 {
 	color = aColor;									
-	texturaCoords = mat2(0.0,-1.0,1.0,0.0) * aTex;	
+	texturaCoords = /*mat2(0.0,1.0,1.0,0.0)*/ mat2(0.0, -1.0, 1.0, 0.0)* aTex;	
 	Normal = aNormal;								
 	currentPos = vec3(model *translation * -rotation * scale* vec4(aPos, 1.0f));
 	

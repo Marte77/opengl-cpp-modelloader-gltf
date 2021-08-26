@@ -171,8 +171,9 @@ int main() {
 	std::string nomeobj = "dancer07";
 	std::string strpath = "res/models/objects/" + nomeobj + "/" + nomeobj + ".obj";
 	//Model coelho(strpath.c_str());
-	Model coelho("res/cubo_do_blender/glb/teste.glb");
-	//Model coelho("res/models/gladiator/source/gladiador.glb"); //VER PORQUE E QUE NAO CARREGA
+	//Model coelho("res/cubo_do_blender/glb/teste.glb");
+	//Model coelho("res/models/gladiator/source/gladiador.glb");
+	Model coelho("res/models/sword/scene.gltf");
 	
 	//espada.setVetorMov(0.0f);
 
